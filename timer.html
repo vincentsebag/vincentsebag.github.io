@@ -1,51 +1,66 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Embeddable Timer</title>
-
+  <title>Minuteur</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f0f0f0;
+    /* --- Basic Reset --- */
+    * {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
     }
-
-    .timer-container {
-      max-width: 320px;
-      margin: 2rem auto;
-      padding: 2rem;
-      background: #fff;
-      border-radius: 8px;
-      box-shadow: 0 0 8px rgba(0,0,0,0.1);
-      text-align: center;
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #333;
     }
 
-    h1 {
-      margin: 0 0 1rem;
-      font-size: 1.5rem;
+    .container {
+      background: rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(10px);
+      border-radius: 10px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      width: 300px;
+      padding: 2rem;
+      text-align: center;
+      animation: fadeIn 0.4s ease-out;
+    }
+
+    /* Fade-in for container */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.95);}
+      to { opacity: 1; transform: scale(1);}
     }
 
     .time-select {
       margin-bottom: 1rem;
     }
 
-    select {
-      padding: 0.3rem;
+    .time-select label {
       font-size: 1rem;
+      margin-right: 0.5rem;
+    }
+
+    select {
+      font-size: 1rem;
+      padding: 0.4rem 0.6rem;
+      border-radius: 5px;
+      border: 1px solid #ccc;
     }
 
     #timer-display {
       font-size: 3rem;
-      margin: 1rem 0;
-      color: #333;
-      transition: color 0.2s, background-color 0.2s;
-      padding: 0.5rem;
-      display: inline-block;
-      width: 180px;
-      border: 2px solid #ddd;
+      margin: 1.5rem 0;
+      padding: 0.3rem 0.6rem;
       border-radius: 8px;
+      border: 2px solid #ddd;
+      display: none;
+      transition: color 0.2s, background-color 0.2s;
     }
 
     .controls {
@@ -53,18 +68,19 @@
     }
 
     button {
-      margin: 0 0.25rem;
-      padding: 0.5rem 1rem;
       font-size: 1rem;
+      padding: 0.6rem 1rem;
+      border-radius: 5px;
       border: none;
-      border-radius: 4px;
       cursor: pointer;
-      background-color: #008cba;
+      margin: 0 0.25rem;
+      background: #0066cc;
       color: #fff;
+      transition: background 0.2s;
     }
 
     button:hover {
-      background-color: #0079a5;
+      background: #004999;
     }
 
     /* Flashing effect when time is up */
@@ -85,134 +101,124 @@
   </style>
 </head>
 <body>
-  <div class="timer-container">
-    <h1>Countdown Timer</h1>
-    <div class="time-select">
-      <label for="time-selector">Choose Time:</label>
-      <select id="time-selector">
-        <option value="300">5 minutes</option>
-        <option value="600">10 minutes</option>
-        <option value="900">15 minutes</option>
-      </select>
-    </div>
 
-    <div id="timer-display">00:00</div>
-    
-    <div class="controls">
-      <button id="start-btn">Start</button>
-      <button id="pause-btn">Pause</button>
-      <button id="reset-btn">Reset</button>
-      <button id="stop-btn">Stop</button>
-    </div>
+<div class="container">
+  
+  <!-- Dropdown (visible only before timer starts) -->
+  <div class="time-select" id="time-select-container">
+    <label for="time-selector">Choisir la durée :</label>
+    <select id="time-selector">
+      <option value="300">5 minutes</option>
+      <option value="600">10 minutes</option>
+      <option value="900">15 minutes</option>
+    </select>
   </div>
 
-  <script>
-    const timeSelector = document.getElementById('time-selector');
-    const timerDisplay = document.getElementById('timer-display');
-    const startBtn = document.getElementById('start-btn');
-    const pauseBtn = document.getElementById('pause-btn');
-    const resetBtn = document.getElementById('reset-btn');
-    const stopBtn = document.getElementById('stop-btn');
+  <!-- Timer display (hidden until Start is pressed) -->
+  <div id="timer-display">00:00</div>
 
-    let timerInterval = null;
-    let totalTime = parseInt(timeSelector.value, 10); // in seconds
-    let remainingTime = totalTime;
-    let isPaused = false;
+  <!-- Controls -->
+  <div class="controls">
+    <!-- Single button toggling "Démarrer", "Pause", "Reprendre" -->
+    <button id="toggle-btn">Démarrer</button>
+    <!-- Reset button -->
+    <button id="reset-btn">Réinitialiser</button>
+  </div>
+</div>
 
-    // Format seconds into mm:ss
-    function formatTime(seconds) {
-      const m = Math.floor(seconds / 60);
-      const s = seconds % 60;
-      return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
-    }
+<script>
+  const timeSelectContainer = document.getElementById('time-select-container');
+  const timeSelector = document.getElementById('time-selector');
+  const timerDisplay = document.getElementById('timer-display');
+  const toggleBtn = document.getElementById('toggle-btn');
+  const resetBtn = document.getElementById('reset-btn');
 
-    // Update the display
-    function updateDisplay(seconds) {
-      timerDisplay.textContent = formatTime(seconds);
-    }
+  let timerInterval = null;
+  let remainingTime = 0;
+  let isPaused = false;
+  let timerState = 'idle'; // can be 'idle', 'running', 'paused'
 
-    // Start the timer
-    function startTimer() {
-      if (timerInterval) return; // Prevent multiple intervals
+  // Format seconds into mm:ss
+  function formatTime(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  }
 
-      // If it's paused, do not reset the remaining time
-      if (!isPaused) {
-        remainingTime = parseInt(timeSelector.value, 10);
-      }
+  // Update the timer display text
+  function updateDisplay(seconds) {
+    timerDisplay.textContent = formatTime(seconds);
+  }
 
-      timerInterval = setInterval(() => {
-        if (!isPaused) {
-          remainingTime -= 1;
-          updateDisplay(remainingTime);
-
-          // Check if time is up
-          if (remainingTime <= 0) {
-            clearInterval(timerInterval);
-            timerInterval = null;
-            // Force zero in case it goes negative
-            remainingTime = 0;
-            updateDisplay(remainingTime);
-            timerDisplay.classList.add('flash');
-          }
-        }
-      }, 1000);
-    }
-
-    // Pause the timer
-    function pauseTimer() {
-      isPaused = !isPaused; // Toggle paused state
-      pauseBtn.textContent = isPaused ? 'Resume' : 'Pause';
-    }
-
-    // Reset the timer to the chosen time
-    function resetTimer() {
-      clearInterval(timerInterval);
-      timerInterval = null;
-      isPaused = false;
-      pauseBtn.textContent = 'Pause';
-      timerDisplay.classList.remove('flash');
-      
-      totalTime = parseInt(timeSelector.value, 10);
-      remainingTime = totalTime;
-      updateDisplay(remainingTime);
-    }
-
-    // Stop the timer and set time to zero
-    function stopTimer() {
-      clearInterval(timerInterval);
-      timerInterval = null;
-      isPaused = false;
-      pauseBtn.textContent = 'Pause';
-      remainingTime = 0;
-      updateDisplay(remainingTime);
-      timerDisplay.classList.add('flash');
-    }
-
-    // Event listeners
-    startBtn.addEventListener('click', () => {
-      // If the timer is at zero, remove flash before starting again
-      if (remainingTime === 0) {
-        timerDisplay.classList.remove('flash');
-      }
-      startTimer();
-    });
+  // Main function to start the countdown
+  function startTimer() {
+    if (timerInterval) return; // Prevent multiple intervals
     
-    pauseBtn.addEventListener('click', pauseTimer);
-    resetBtn.addEventListener('click', resetTimer);
-    stopBtn.addEventListener('click', stopTimer);
-
-    // Initialize display on load
-    updateDisplay(remainingTime);
-
-    // Also reset if user changes the selection while no timer is running
-    timeSelector.addEventListener('change', () => {
-      if (!timerInterval) {
-        totalTime = parseInt(timeSelector.value, 10);
-        remainingTime = totalTime;
+    timerInterval = setInterval(() => {
+      if (!isPaused) {
+        remainingTime -= 1;
         updateDisplay(remainingTime);
-        timerDisplay.classList.remove('flash');
+
+        // Check if time is up
+        if (remainingTime <= 0) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+          remainingTime = 0;
+          updateDisplay(remainingTime);
+          timerDisplay.classList.add('flash');
+        }
       }
-    });
-  </script>
+    }, 1000);
+  }
+
+  // Toggle between Start, Pause, Resume
+  function toggleTimer() {
+    if (timerState === 'idle') {
+      // Move from idle to running
+      remainingTime = parseInt(timeSelector.value, 10);
+      updateDisplay(remainingTime);
+
+      // Hide the dropdown, show the timer
+      timeSelectContainer.style.display = 'none';
+      timerDisplay.style.display = 'inline-block';
+
+      timerDisplay.classList.remove('flash'); // in case it's still flashing
+      timerState = 'running';
+      isPaused = false;
+      toggleBtn.textContent = 'Pause';
+      startTimer();
+    } else if (timerState === 'running') {
+      // Move from running to paused
+      isPaused = true;
+      timerState = 'paused';
+      toggleBtn.textContent = 'Reprendre';
+    } else if (timerState === 'paused') {
+      // Move from paused to running
+      isPaused = false;
+      timerState = 'running';
+      toggleBtn.textContent = 'Pause';
+    }
+  }
+
+  // Reset the timer
+  function resetTimer() {
+    clearInterval(timerInterval);
+    timerInterval = null;
+    remainingTime = 0;
+    isPaused = false;
+    timerState = 'idle';
+
+    // Show dropdown again, hide timer
+    timeSelectContainer.style.display = 'block';
+    timerDisplay.style.display = 'none';
+    timerDisplay.classList.remove('flash');
+
+    toggleBtn.textContent = 'Démarrer';
+  }
+
+  // Event listeners
+  toggleBtn.addEventListener('click', toggleTimer);
+  resetBtn.addEventListener('click', resetTimer);
+</script>
 </body>
 </html>
