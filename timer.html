@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Embeddable Timer</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f0f0;
+      margin: 0;
+      padding: 0;
+    }
+
+    .timer-container {
+      max-width: 320px;
+      margin: 2rem auto;
+      padding: 2rem;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0 0 1rem;
+      font-size: 1.5rem;
+    }
+
+    .time-select {
+      margin-bottom: 1rem;
+    }
+
+    select {
+      padding: 0.3rem;
+      font-size: 1rem;
+    }
+
+    #timer-display {
+      font-size: 3rem;
+      margin: 1rem 0;
+      color: #333;
+      transition: color 0.2s, background-color 0.2s;
+      padding: 0.5rem;
+      display: inline-block;
+      width: 180px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+    }
+
+    .controls {
+      margin-top: 1rem;
+    }
+
+    button {
+      margin: 0 0.25rem;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      background-color: #008cba;
+      color: #fff;
+    }
+
+    button:hover {
+      background-color: #0079a5;
+    }
+
+    /* Flashing effect when time is up */
+    .flash {
+      animation: flashRed 0.8s alternate infinite;
+    }
+
+    @keyframes flashRed {
+      0% {
+        background-color: transparent;
+        color: #c00;
+      }
+      100% {
+        background-color: #c00;
+        color: #fff;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="timer-container">
+    <h1>Countdown Timer</h1>
+    <div class="time-select">
+      <label for="time-selector">Choose Time:</label>
+      <select id="time-selector">
+        <option value="300">5 minutes</option>
+        <option value="600">10 minutes</option>
+        <option value="900">15 minutes</option>
+      </select>
+    </div>
+
+    <div id="timer-display">00:00</div>
+    
+    <div class="controls">
+      <button id="start-btn">Start</button>
+      <button id="pause-btn">Pause</button>
+      <button id="reset-btn">Reset</button>
+      <button id="stop-btn">Stop</button>
+    </div>
+  </div>
+
+  <script>
+    const timeSelector = document.getElementById('time-selector');
+    const timerDisplay = document.getElementById('timer-display');
+    const startBtn = document.getElementById('start-btn');
+    const pauseBtn = document.getElementById('pause-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const stopBtn = document.getElementById('stop-btn');
+
+    let timerInterval = null;
+    let totalTime = parseInt(timeSelector.value, 10); // in seconds
+    let remainingTime = totalTime;
+    let isPaused = false;
+
+    // Format seconds into mm:ss
+    function formatTime(seconds) {
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+    }
+
+    // Update the display
+    function updateDisplay(seconds) {
+      timerDisplay.textContent = formatTime(seconds);
+    }
+
+    // Start the timer
+    function startTimer() {
+      if (timerInterval) return; // Prevent multiple intervals
+
+      // If it's paused, do not reset the remaining time
+      if (!isPaused) {
+        remainingTime = parseInt(timeSelector.value, 10);
+      }
+
+      timerInterval = setInterval(() => {
+        if (!isPaused) {
+          remainingTime -= 1;
+          updateDisplay(remainingTime);
+
+          // Check if time is up
+          if (remainingTime <= 0) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            // Force zero in case it goes negative
+            remainingTime = 0;
+            updateDisplay(remainingTime);
+            timerDisplay.classList.add('flash');
+          }
+        }
+      }, 1000);
+    }
+
+    // Pause the timer
+    function pauseTimer() {
+      isPaused = !isPaused; // Toggle paused state
+      pauseBtn.textContent = isPaused ? 'Resume' : 'Pause';
+    }
+
+    // Reset the timer to the chosen time
+    function resetTimer() {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      isPaused = false;
+      pauseBtn.textContent = 'Pause';
+      timerDisplay.classList.remove('flash');
+      
+      totalTime = parseInt(timeSelector.value, 10);
+      remainingTime = totalTime;
+      updateDisplay(remainingTime);
+    }
+
+    // Stop the timer and set time to zero
+    function stopTimer() {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      isPaused = false;
+      pauseBtn.textContent = 'Pause';
+      remainingTime = 0;
+      updateDisplay(remainingTime);
+      timerDisplay.classList.add('flash');
+    }
+
+    // Event listeners
+    startBtn.addEventListener('click', () => {
+      // If the timer is at zero, remove flash before starting again
+      if (remainingTime === 0) {
+        timerDisplay.classList.remove('flash');
+      }
+      startTimer();
+    });
+    
+    pauseBtn.addEventListener('click', pauseTimer);
+    resetBtn.addEventListener('click', resetTimer);
+    stopBtn.addEventListener('click', stopTimer);
+
+    // Initialize display on load
+    updateDisplay(remainingTime);
+
+    // Also reset if user changes the selection while no timer is running
+    timeSelector.addEventListener('change', () => {
+      if (!timerInterval) {
+        totalTime = parseInt(timeSelector.value, 10);
+        remainingTime = totalTime;
+        updateDisplay(remainingTime);
+        timerDisplay.classList.remove('flash');
+      }
+    });
+  </script>
+</body>
+</html>
